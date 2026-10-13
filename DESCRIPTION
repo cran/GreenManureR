@@ -1,0 +1,36 @@
+Package: GreenManureR
+Type: Package
+Title: Green Manure Decomposition, Nutrient Release and Crop Response
+Version: 0.1.0
+Authors@R: c(
+    person(given = "Anbukkani", family = "Perumal",
+           role = c("aut", "cre", "cph"), email = "anbueconomic@gmail.com"),
+    person(given = "Ramachandran", family = "S", role = c("aut", "cph")))
+Description: Tools for analysing green manure and cover crop experiments,
+    for example with Mucuna, sunhemp and dhaincha. Fits single-pool,
+    double-pool and asymptotic litterbag decomposition models and ranks
+    them by the corrected Akaike information criterion, estimates the time
+    to 50 percent mass loss with Monte-Carlo confidence intervals, and
+    quantifies nitrogen, phosphorus, potassium and other nutrient release
+    over time. Further functions compute nutrient inputs, crop uptake,
+    apparent nitrogen recovery and fertilizer nitrogen replacement value,
+    estimate residual effects of green manures on succeeding kharif and
+    rabi crops, link decomposition, nutrient release and crop response in
+    a joint analysis, and generate standardized tables, diagnostic plots
+    and a Word report.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.0.0)
+Imports: stats, utils, withr
+Suggests: ggplot2, officer, knitr, rmarkdown, testthat (>= 3.0.0)
+VignetteBuilder: knitr
+LazyData: true
+Config/testthat/edition: 3
+RoxygenNote: 7.3.1
+NeedsCompilation: no
+Packaged: 2026-10-01 09:25:45 UTC; root
+Author: Anbukkani Perumal [aut, cre, cph],
+  Ramachandran S [aut, cph]
+Maintainer: Anbukkani Perumal <anbueconomic@gmail.com>
+Repository: CRAN
+Date/Publication: 2026-10-13 15:00:18 UTC

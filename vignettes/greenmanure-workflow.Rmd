@@ -1,0 +1,130 @@
+---
+title: "Analysing green manure decomposition, nutrient release and crop response"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Analysing green manure decomposition, nutrient release and crop response}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6.5, fig.height = 4)
+has_gg <- requireNamespace("ggplot2", quietly = TRUE)
+library(GreenManureR)
+```
+
+## Overview
+
+**GreenManureR** supports experiments in which a green manure or cover crop
+(Mucuna, sunhemp, dhaincha and others) is incorporated, its residues decompose
+in litterbags, nutrients are released, and one or more succeeding crops
+(for example kharif and rabi) respond. The package links these three stages:
+
+1. `decomp_fit()` and `decomp_t50()`: residue decomposition;
+2. `nutrient_release()`: N, P, K and other nutrient release;
+3. `greenmanure_n_balance()`: N inputs, crop uptake and apparent balance;
+4. `carryover_effect()`: residual effects on succeeding crops;
+5. `gm_joint_analysis()` and `greenmanure_report()`: integration and reporting.
+
+The examples use simulated data (`gm_litterbag`, `gm_agronomy`) that mimic the
+structure of a real experiment.
+
+```{r data}
+head(gm_litterbag, 3)
+head(gm_agronomy, 3)
+```
+
+## Decomposition models
+
+With $M$ the percentage of initial mass remaining, three models are fitted per
+group and ranked by AICc:
+
+* single pool: $M = 100\,e^{-kt}$;
+* double pool: $M = 100\,[A e^{-k_f t} + (1-A) e^{-k_s t}]$ with $k_s \le k_f$;
+* asymptotic: $M = C + (100 - C) e^{-kt}$, where $C$ is the recalcitrant residue.
+
+```{r decomp}
+fit <- decomp_fit(gm_litterbag, time = "time", mass = "mass", group = "treatment")
+fit$table[fit$table$selected, c("treatment", "model", "k", "k_slow", "pool_A", "R2", "AICc")]
+```
+
+The time to 50% mass loss uses the selected model, with a Monte-Carlo interval
+based on the covariance matrix of the nonlinear least squares fit:
+
+```{r t50}
+decomp_t50(fit)
+```
+
+```{r decomp-plot, eval = has_gg}
+plot(fit)
+```
+
+## Nutrient release
+
+Nutrient remaining is `mass x concentration / initial concentration`, so values
+above 100% indicate net immobilization. Supplying the dry matter input
+(`biomass`, t/ha) also yields absolute release in kg/ha.
+
+```{r nutrient}
+nr <- nutrient_release(gm_litterbag, nutrients = c("N", "P", "K"),
+                       group = "treatment", biomass = "biomass_tha",
+                       at = c(14, 30, 60))
+nr$t50[, c("treatment", "nutrient", "model", "t50")]
+subset(nr$release_at, nutrient == "N" & time == 30)
+```
+
+```{r nutrient-plot, eval = has_gg}
+plot(nr)
+```
+
+## Nitrogen balance
+
+```{r nbal}
+nb <- greenmanure_n_balance(gm_agronomy, by = "season")
+s <- nb$summary
+s[s$fert_N == 0 & s$treatment != "Control",
+  c("season", "treatment", "N_gm_input_mean", "N_uptake_mean", "ANR_mean", "NFRV_mean")]
+```
+
+`ANR` is the apparent N recovery from the green manure relative to the control
+at the same fertilizer N level. `NFRV` is the fertilizer N replacement value,
+obtained by inverting a quadratic response fitted to the control plots; it is
+`NA` when the yield lies outside the fitted range.
+
+## Residual effects on succeeding crops
+
+```{r carry}
+co <- carryover_effect(gm_agronomy, response = "grain_yield", strata = "fert_N",
+                       season_levels = c("Kharif", "Rabi"))
+co$effects[co$effects$fert_N == 0,
+           c("season", "treatment", "diff", "pct_change", "p_adj", "retention_vs_first")]
+co$pooled
+```
+
+The `treatment x season` term in the pooled analysis tests whether the green
+manure effect changes between crops; `retention_vs_first` gives the second-crop
+effect as a percentage of the first-crop effect.
+
+```{r carry-plot, eval = has_gg}
+plot(co)
+```
+
+## Joint analysis
+
+```{r joint}
+ja <- suppressWarnings(
+  gm_joint_analysis(fit, nr, nb, co, nutrient_name = "N", at_day = 60, fert_N_level = 0))
+ja$data
+```
+
+With only three species the rank correlations in `ja$cor` are descriptive; to
+draw inference, pool several sites or years.
+
+## Reporting
+
+`greenmanure_report()` writes CSV tables, PNG figures and a Word report to a
+directory of your choice:
+
+```{r report, eval = FALSE}
+greenmanure_report(fit, nr, nb, co, ja, outdir = "gm_report")
+```
